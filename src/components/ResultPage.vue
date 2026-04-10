@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onActivated } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { chat } from '../utils/bailian';
+import { generateShareUrl } from '../utils/scoreEncoder';
 
 defineOptions({
   name: 'ResultPage'
@@ -387,6 +388,77 @@ const savePoster = () => {
   });
 };
 
+// 邀请好友测试
+const inviteFriend = () => {
+  const scores = {
+    A: results.value.dimensions.A.score,
+    B: results.value.dimensions.B.score,
+    C: results.value.dimensions.C.score,
+    D: results.value.dimensions.D.score
+  };
+  const shareUrl = generateShareUrl(scores);
+
+  // 手机端兼容性处理
+  if (navigator.share) {
+    // 现代浏览器原生分享
+    navigator.share({
+      title: '测测你们合拍吗',
+      text: '我已经完成了情绪体质测试，快来测测我们合拍吗！',
+      url: shareUrl
+    }).catch((error) => {
+      console.log('分享失败:', error);
+      // 分享失败时回退到复制链接
+      copyShareUrl(shareUrl);
+    });
+  } else {
+    // 不支持原生分享的浏览器，使用复制链接
+    copyShareUrl(shareUrl);
+  }
+};
+
+// 复制分享链接
+const copyShareUrl = (url) => {
+  // 尝试使用 Clipboard API
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(url).then(() => {
+      alert('链接已复制到剪贴板，快发给好友吧！');
+    }).catch(() => {
+      // 降级方案：使用 prompt
+      fallbackCopyTextToClipboard(url);
+    });
+  } else {
+    // 不支持 Clipboard API 的情况
+    fallbackCopyTextToClipboard(url);
+  }
+};
+
+// 复制链接的降级方案
+const fallbackCopyTextToClipboard = (text) => {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-999999px';
+  textArea.style.top = '-999999px';
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  try {
+    const successful = document.execCommand('copy');
+    if (successful) {
+      alert('链接已复制到剪贴板，快发给好友吧！');
+    } else {
+      // 再次降级到 prompt
+      prompt('复制失败，请手动复制以下链接：', text);
+    }
+  } catch (err) {
+    console.error('复制失败:', err);
+    prompt('复制失败，请手动复制以下链接：', text);
+  } finally {
+    document.body.removeChild(textArea);
+  }
+};
+
 // 组件激活时检查是否有新的测试结果
 const handleActivated = () => {
   // 检查路由参数是否有变化
@@ -470,13 +542,13 @@ onActivated(handleActivated);
       <!-- 模块 6：操作按钮区 -->
       <div class="action-buttons">
         <button class="action-button save-button" @click="savePoster">保存海报</button>
-        <button class="action-button share-button">分享好友</button>
+        <button class="action-button share-button" @click="inviteFriend">测测你们合拍吗</button>
         <button class="action-button retake-button" @click="retakeTest">再测一次</button>
       </div>
 
       <!-- 模块 7：底部引流文案 -->
       <div class="bottom-copy">
-        <p class="copy-text">测测你的情绪体质 →</p>
+        <p class="copy-text">测测你们合拍吗 →</p>
       </div>
     </template>
   </div>

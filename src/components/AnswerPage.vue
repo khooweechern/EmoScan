@@ -1,8 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { parsePartnerScores } from '../utils/scoreEncoder';
 
 const router = useRouter();
+const route = useRoute();
 
 // 题目数据
 const questions = ref([
@@ -167,6 +169,9 @@ const totalQuestions = computed(() => {
   return questions.value.length;
 });
 
+// 伙伴的分数
+const partnerScores = ref(null);
+
 // 处理选项点击
 const handleOptionClick = (value) => {
   // 保存答案
@@ -176,11 +181,23 @@ const handleOptionClick = (value) => {
   if (currentQuestionIndex.value < questions.value.length - 1) {
     currentQuestionIndex.value++;
   } else {
-    // 完成所有题目，跳转到结果页并传递答案
-    router.push({
-      path: '/result',
-      query: { answers: JSON.stringify(answers.value) }
-    });
+    // 完成所有题目
+    if (partnerScores.value) {
+      // 如果有伙伴分数，跳转到双人对比页面
+      router.push({
+        path: '/compare',
+        query: {
+          answers: JSON.stringify(answers.value),
+          partner: JSON.stringify(partnerScores.value)
+        }
+      });
+    } else {
+      // 否则跳转到结果页
+      router.push({
+        path: '/result',
+        query: { answers: JSON.stringify(answers.value) }
+      });
+    }
   }
 };
 
@@ -190,6 +207,14 @@ const prevQuestion = () => {
     currentQuestionIndex.value--;
   }
 };
+
+// 检查是否有伙伴的分数
+onMounted(() => {
+  const scores = parsePartnerScores();
+  if (scores) {
+    partnerScores.value = scores;
+  }
+});
 
 // 下一题
 const nextQuestion = () => {
